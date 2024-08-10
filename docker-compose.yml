@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - DB_USER=abhishek
+      - DB_PASSWORD=KksT585$
+      - DB_NAME=youtube_videos
+      - DB_HOST=20mis0158_backend-db-1
+      - DB_PORT=5432
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: youtube_videos
+      POSTGRES_USER: abhishek
+      POSTGRES_PASSWORD: KksT585$
+    ports:
+      - "5433:5432"

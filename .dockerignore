@@ -1,0 +1,6 @@
+# Ignore the local Go build cache
+build/
+*.log
+
+# Ignore the vendor directory (if using vendoring)
+vendor/

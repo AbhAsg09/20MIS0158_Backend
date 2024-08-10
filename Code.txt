@@ -1,0 +1,327 @@
+/cmd/main.go
+package main
+
+import (
+	"20MIS0158_Backend/config"
+	"20MIS0158_Backend/internal/db" // This is the package import
+	"20MIS0158_Backend/internal/handlers"
+	"20MIS0158_Backend/internal/models"
+	"20MIS0158_Backend/internal/yt"
+	"log"
+	"net/http"
+
+	"github.com/gorilla/mux"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+func main() {
+	// Load configuration
+	cfg, err := config.LoadConfig("../config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Initialize the database
+	db.InitDB()
+
+	// Connect to the database
+	gormDB, err := gorm.Open(postgres.Open(cfg.Database.DSN), &gorm.Config{})
+	if err != nil {
+		log.Fatal("Failed to connect to the database:", err)
+	}
+
+	// Auto-Migrate Video model
+	err = gormDB.AutoMigrate(&models.Video{})
+	if err != nil {
+		log.Fatalf("Failed to auto-migrate models: %v", err)
+	}
+
+	// Initialize the router
+	router := mux.NewRouter()
+
+	// Define API endpoints
+	router.HandleFunc("/videos", handlers.GetVideos(gormDB)).Methods("GET")
+	router.HandleFunc("/search", handlers.SearchVideos(gormDB)).Methods("GET")
+
+	// Start background YouTube data fetching
+	go yt.FetchAndStoreVideos(gormDB, cfg.YouTube.APIKeys, cfg.YouTube.SearchQuery, cfg.GetFetchInterval())
+
+	// Start the server
+	log.Printf("Starting server on %s...", cfg.Server.Port)
+	if err := http.ListenAndServe(cfg.Server.Port, router); err != nil {
+		log.Fatal(err)
+	}
+}
+
+/config/config.go
+package config
+
+import (
+	"gopkg.in/yaml.v3"
+	"os"
+	"time"
+)
+
+// Config represents the structure of the config.yaml file
+type Config struct {
+	Server struct {
+		Port string `yaml:"port"`
+	} `yaml:"server"`
+
+	Database struct {
+		DSN string `yaml:"dsn"`
+	} `yaml:"database"`
+
+	YouTube struct {
+		APIKeys              []string `yaml:"api_keys"`
+		SearchQuery          string   `yaml:"search_query"`
+		FetchIntervalSeconds int      `yaml:"fetch_interval_seconds"`
+	} `yaml:"youtube"`
+}
+
+// LoadConfig loads configuration from the config.yaml file
+func LoadConfig(path string) (*Config, error) {
+	var cfg Config
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(data, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+// GetFetchInterval returns the fetch interval as a time.Duration
+func (cfg *Config) GetFetchInterval() time.Duration {
+	return time.Duration(cfg.YouTube.FetchIntervalSeconds) * time.Second
+}
+
+/internal/db/database.go
+package db
+
+import (
+	"fmt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"log"
+	"os"
+)
+
+var DB *gorm.DB
+
+func InitDB() {
+	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"))
+
+	var err error
+	DB, err = gorm.Open(postgres.Open(connStr), &gorm.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = sqlDB.Ping(); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Database connected")
+}
+
+/internal/handlers/handlers.go
+package handlers
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"20MIS0158_Backend/internal/models"
+	"gorm.io/gorm"
+)
+
+// GetVideos returns the list of videos in a paginated response, sorted by published datetime in descending order.
+func GetVideos(db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var videos []models.Video
+		result := db.Order("published_at desc").Find(&videos)
+		if result.Error != nil {
+			http.Error(w, "Failed to retrieve videos", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(videos)
+	}
+}
+
+// SearchVideos searches videos by title and description.
+func SearchVideos(db *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("q")
+		if query == "" {
+			http.Error(w, "Query parameter 'q' is required", http.StatusBadRequest)
+			return
+		}
+
+		var videos []models.Video
+		searchPattern := "%" + query + "%"
+		result := db.Where("title LIKE ? OR description LIKE ?", searchPattern, searchPattern).Find(&videos)
+		if result.Error != nil {
+			http.Error(w, "Failed to search videos", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(videos)
+	}
+}
+
+/internal/models/model.go
+package models
+
+import "time"
+
+type Video struct {
+	Title        string
+	Description  string
+	PublishedAt  time.Time
+	ThumbnailURL string // Change this to string
+}
+
+/internal/yt/youtube.go
+package yt
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// Video represents the structure of a video fetched from YouTube API
+
+type Video struct {
+	Title        string
+	Description  string
+	PublishedAt  time.Time
+	ThumbnailURL string // Change this to string
+}
+
+type APIResponse struct {
+	Items []struct {
+		Snippet struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			PublishedAt string `json:"publishedAt"`
+			Thumbnails  struct {
+				Default struct {
+					URL string `json:"url"`
+				} `json:"default"`
+			} `json:"thumbnails"`
+		} `json:"snippet"`
+	} `json:"items"`
+}
+
+func FetchVideos(apiKey, query string) ([]Video, error) {
+	url := fmt.Sprintf("https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=50&q=%s&type=video&order=date&key=%s", query, apiKey)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var apiResp APIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, err
+	}
+
+	var videos []Video
+	for _, item := range apiResp.Items {
+		publishedAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+		if err != nil {
+			log.Println("Error parsing date:", err)
+			continue
+		}
+
+		video := Video{
+			Title:        item.Snippet.Title,
+			Description:  item.Snippet.Description,
+			PublishedAt:  publishedAt,
+			ThumbnailURL: item.Snippet.Thumbnails.Default.URL, // This is now a string
+		}
+
+		videos = append(videos, video)
+	}
+
+	return videos, nil
+}
+
+// StoreVideos stores the fetched videos in the database
+func StoreVideos(db *gorm.DB, videos []Video) error {
+	for _, video := range videos {
+		if err := db.Create(&video).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// FetchAndStoreVideos fetches the videos using multiple API keys and stores them in the database
+func FetchAndStoreVideos(db *gorm.DB, apiKeys []string, query string, interval time.Duration) {
+	var currentAPIKey int
+
+	for {
+		videos, err := FetchVideos(apiKeys[currentAPIKey], query)
+		if err != nil {
+			log.Printf("Error fetching videos with API key %d: %v", currentAPIKey, err)
+			currentAPIKey = (currentAPIKey + 1) % len(apiKeys) // Rotate API key
+			continue
+		}
+
+		err = StoreVideos(db, videos)
+		if err != nil {
+			log.Printf("Error storing videos: %v", err)
+		}
+
+		time.Sleep(interval) // Sleep for the configured interval
+	}
+}
+
+/.env
+POSTGRES_USER=Abhishek
+POSTGRES_PASSWORD=KksT585$
+POSTGRES_DB=youtube_videos
+DB_USER=Abhishek
+DB_PASSWORD=KksT585$
+DB_NAME=youtube_videos
+DB_PORT=5432
+
+/config.yaml
+server:
+  port: ":8080"
+
+database:
+  dsn: "user=abhishek password=KksT585$ dbname=youtube_videos host=localhost port=5432 sslmode=disable"
+
+youtube:
+  api_keys:
+    - "AIzaSyA6WorGbeSjg9101WRRk5B1Ny6AHNSLdZ0"
+    - "AIzaSyAomQaN2JT7bFJKwXJ-qZhApidGn8wejKY"
+    - "AIzaSyDd4n1qVs07YweHVmI5cNqX6eWGyCTmWDU"
+    - "AIzaSyBHq0yy5hkHek4Pc4FCCmn1XS3MKMwn7OE"
+    - "AIzaSyB2Yt4Mh0Cu6OTvKZc0eJtlLaG1XlWHi8k"
+  search_query: "cricket"
+  fetch_interval_seconds: 10
