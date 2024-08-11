@@ -53,6 +53,15 @@ Clone the repository and configure the docker and config.yaml files accordingly
 - `docker-compose up`
 - *Side Note- If it doesn't run in the first try, retry after ''Ctrl+C*
 
+  **How it looks while running**
+  - Terminal
+    ![Terminal](Images/Termial_logs.png)
+  - Make requests from **Postman** at
+  - 'localhost:8080/videos'
+    ![Videos](Images/Videos.png)
+  - 'localhost:8080/search?q=Kohli'
+    ![Search](Images/Search.png)
+
   **Hosted**
   - This has been hosted to collect data at render.
     ![Deployed Image](Images/Deployed.png)
