@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -72,28 +74,50 @@ func FetchVideos(apiKey, query string) ([]Video, error) {
 // StoreVideos stores the fetched videos in the database
 // StoreVideos stores the fetched videos in the database
 func StoreVideos(db *gorm.DB, videos []Video) {
-	for _, video := range videos {
-		if err := db.Create(&video).Error; err != nil {
-			log.Printf("Error storing video: %v", err)
-		}
-		log.Printf("Stored video: %v", video)
+	if len(videos) == 0 {
+		return
+	}
+
+	// Use a bulk insert operation to improve performance
+	if err := db.Create(&videos).Error; err != nil {
+		log.Printf("Error storing videos: %v", err)
+	} else {
+		log.Printf("Stored %d videos", len(videos))
 	}
 }
 
 // FetchAndStoreVideos fetches the videos using multiple API keys and stores them in the database
 func FetchAndStoreVideos(db *gorm.DB, apiKeys []string, query string, interval time.Duration) {
 	var currentAPIKey int
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 	for {
-		videos, err := FetchVideos(apiKeys[currentAPIKey], query)
-		if err != nil {
-			log.Printf("Error fetching videos with API key %d: %v", currentAPIKey, err)
-			currentAPIKey = (currentAPIKey + 1) % len(apiKeys) // Rotate API key
-			continue
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 
-		StoreVideos(db, videos)
+			mu.Lock()
+			apiKey := apiKeys[currentAPIKey]
+			currentAPIKey = (currentAPIKey + 1) % len(apiKeys)
+			mu.Unlock()
 
-		time.Sleep(interval) // Sleep for the configured interval
+			videos, err := FetchVideos(apiKey, query)
+			if err != nil {
+				if strings.Contains(err.Error(), "quotaExceeded") {
+					log.Printf("Quota exceeded for API key %s. Skipping further requests until next day.", apiKey)
+					time.Sleep(24 * time.Hour) // Wait until the next day to reset quota
+					return
+				}
+				log.Printf("Error fetching videos with API key %s and query %s: %v", apiKey, query, err)
+				return
+			}
+
+			StoreVideos(db, videos)
+		}()
+
+		time.Sleep(interval)
 	}
+
+	wg.Wait()
 }

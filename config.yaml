@@ -3,22 +3,32 @@ server:
 
 database:
   user: "abhishek"
-  password: "KksT585$"
-  dbname: "youtube_videos"
-  host: "20mis0158_backend-db-1"
+  password: "fJomBjck74yooAnOeqdZF7hUbhAOXndl"
+  dbname: "youtube_videos_lf49"
+  host: "dpg-cqru6ndumphs73cqo98g-a"
   port: "5432"
 
 youtube:
   api_keys:
-    - "AIzaSyBKwrwtkN-syL-9wSZBoZ1v3Qz0NBjKdp8"
-    - "AIzaSyCbyS9twmUpbkfH8GN6vIZklA4CnnO7-LA"
-    - "AIzaSyARTor_ohGOcjSpWxuML7zas7z3Uv1TOKg"
-    - "AIzaSyCjyAu-GZ023w1SCW6CP8MrLggAD0IDGDI"
-    - "AIzaSyAMdJW9ddHQEHPqgBaGLc3bLkrKTC0Ex4w"
-    - "AIzaSyCa2omcrZIMQaJSdjukFgV4eEIaNdYIzC4"
-    - "AIzaSyDRs6Sfno2jXJWo0QOQCwBz2TIs9PK_swg"
-    - "AIzaSyBM4inA_lW7pSVkOUnFum45D-4b6-RGA80"
-    - "AIzaSyCRRp7WG10RGv1XiPF0KuKVwPyH0gqAdaA"
-    - "AIzaSyD4c2YW5SFuvpg4NogciUowGdxF_wygqf4"
-  search_query: "music"
+    - "AIzaSyDnWbleoG7hj7eH1bx8LrwG0nOOz7O_Bsk
+"
+    - "AIzaSyDB5rr5mWdcd2HhY-Sgv8kD7Aa3AJHpBb8
+"
+    - "AIzaSyB0U9gRskWgR_roeicaNdfh1UgA8RtWCl8
+"
+    - "AIzaSyB6x2m-Ugl7khbWdqIQ3CHV-_zjX2UUTjk
+"
+    - "AIzaSyBo7nE8YCaKeZiyEsN6RNiiW-eTbUwnssA
+"
+    - "AIzaSyCUhxMQmZsCzUa7vwoBwEPpVbCOi53ZbYw
+"
+    - "AIzaSyCoXaw_YeFo-LV_1Vz5NeiIT0PHPEyBlDY
+"
+    - "AIzaSyCsDSzcsfITLgvMI9-s8O45g1Dq8oNU-Kg
+"
+    - "AIzaSyAmZuFc9rzX2s6s93TFZ0D7QCh27I2t-Yg
+"
+    - "AIzaSyDDFfOm759GxMvKByrdfRjNrL3gRPMtZvw
+"
+  search_query: "cricket"
   fetch_interval_seconds: 2
