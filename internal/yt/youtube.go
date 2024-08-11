@@ -89,7 +89,6 @@ func FetchVideos(apiKey, query string) ([]Video, error) {
 }
 
 // StoreVideos stores the fetched videos in the database
-// StoreVideos stores the fetched videos in the database
 func StoreVideos(db *gorm.DB, videos []Video) {
 	// Use a bulk insert operation to improve performance
 	if err := db.Create(&videos).Error; err != nil {
