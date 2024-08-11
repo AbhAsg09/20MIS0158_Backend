@@ -51,4 +51,9 @@ Clone the repository and configure the docker and config.yaml files accordingly
 -  Run 
 - `docker-compose build`
 - `docker-compose up`
-- *Side Note- If it doesn't run in the first try, retry after ''Ctrl+C* 
+- *Side Note- If it doesn't run in the first try, retry after ''Ctrl+C*
+
+  **Hosted**
+  - This has been hosted to collect data at render.
+  - To connect to render psql database run-
+  - `PGPASSWORD=fJomBjck74yooAnOeqdZF7hUbhAOXndl psql -h dpg-cqru6ndumphs73cqo98g-a.oregon-postgres.render.com -U abhishek youtube_videos_lf49`
