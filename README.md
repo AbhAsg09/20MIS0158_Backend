@@ -50,5 +50,5 @@ Clone the repository and configure the docker and config.yaml files accordingly
 - Install docker and docker compose
 -  Run 
 - `docker-compose build`
--`docker-compose up`
- *Side Note- If it doesn't run in the first try, retry after ''Ctrl+C* 
+- `docker-compose up`
+- *Side Note- If it doesn't run in the first try, retry after ''Ctrl+C* 
