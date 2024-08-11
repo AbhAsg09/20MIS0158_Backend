@@ -1,0 +1,50 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+main
+main1
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Configuration files
+config.yaml
+config/*.yaml
+
+# Logs
+*.log
+*.txt
+*.out
+
+# Dependency directories (remove the comment below if you have vendored dependencies)
+vendor/
+
+# Go workspace file
+go.work
+
+# Docker related files
+Dockerfile
+docker-compose.yml
+*.dockerfile
+
+# Database files
+*.db
+*.sqlite
+*.sql
+*.db-journal
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# GORM auto migration files (if applicable)
+gorm.db

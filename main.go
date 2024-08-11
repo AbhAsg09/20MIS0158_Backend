@@ -12,14 +12,16 @@ import (
 
 func startFetching(cfg *config.Config, gormDB *gorm.DB) {
 	apiKeys := cfg.YouTube.APIKeys
-	query := cfg.YouTube.SearchQuery // Single query
+	query := cfg.YouTube.SearchQuery
 
-	// Start fetching and storing videos using the single query
-	go yt.FetchAndStoreVideos(gormDB, apiKeys, query, cfg.GetFetchInterval())
+	log.Println("Starting video fetcher...") // Add logging
+
+	yt.FetchAndStoreVideos(gormDB, apiKeys, query, cfg.GetFetchInterval())
 }
 
 func main() {
 	// Load configuration
+
 	cfg, err := config.LoadConfig("config.yaml")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -47,6 +49,4 @@ func main() {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 
-	// Keep the main function alive
-	select {}
 }
